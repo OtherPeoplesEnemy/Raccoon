@@ -2,7 +2,7 @@
 
 # Security Raccoon Installer
 # Author: [Your Name]
-# Version: 1.3
+# Version: 1.4
 
 # --- Colors ---
 GREEN='\033[0;32m'
@@ -10,7 +10,7 @@ RED='\033[0;31m'
 NC='\033[0m'
 
 # --- Logging ---
-LOGFILE="$HOME/security_raccoon_install.log"
+LOGFILE="$(pwd)/security_raccoon_install.log"
 exec > >(tee -a "$LOGFILE") 2>&1
 
 # --- Require root privileges ---
@@ -87,43 +87,53 @@ clone_tools() {
     pip3 install -r /opt/tools/Sublist3r/requirements.txt || true
 
     echo -e "${GREEN}[+] Downloading RustScan binary...${NC}"
-    wget https://github.com/RustScan/RustScan/releases/latest/download/rustscan-x86_64-unknown-linux-musl.tar.gz -O rustscan.tar.gz
-    tar -xvzf rustscan.tar.gz
-    chmod +x rustscan
-    rm -f rustscan.tar.gz
+    RUSTSCAN_URL=$(curl -s https://api.github.com/repos/RustScan/RustScan/releases/latest \
+        | grep "browser_download_url.*linux-musl" \
+        | cut -d '"' -f 4 | head -n 1)
+    wget "$RUSTSCAN_URL" -O rustscan.tar.gz || echo "RustScan download failed."
+    if [ -f rustscan.tar.gz ]; then
+        tar -xvzf rustscan.tar.gz
+        chmod +x rustscan || true
+        rm -f rustscan.tar.gz
+    else
+        echo -e "${RED}[-] RustScan archive not found. Skipping extract.${NC}"
+    fi
 
     echo -e "${GREEN}[+] Downloading Sliver C2 binary...${NC}"
     wget https://github.com/BishopFox/sliver/releases/latest/download/sliver-server_linux -O sliver-server
     chmod +x sliver-server
 
     echo -e "${GREEN}[+] Downloading Burp Suite Community Installer...${NC}"
-    wget https://portswigger.net/burp/releases/download?product=community&version=2024.2.1&type=Linux -O burpsuite_community_linux.sh
+    wget "https://portswigger.net/burp/releases/download?product=community&version=2024.2.1&type=Linux" -O burpsuite_community_linux.sh
     chmod +x burpsuite_community_linux.sh
 
     echo -e "${GREEN}[+] Installing bloodhound-python...${NC}"
-    git clone https://github.com/fox-it/bloodhound-python.git || echo "bloodhound-python already exists."
-    cd /opt/tools/bloodhound-python
-    pip3 install -r requirements.txt
-    python3 setup.py install
+    git clone https://github.com/dirkjanm/bloodhound-python.git || echo "bloodhound-python already exists."
+    cd /opt/tools/bloodhound-python || echo "bloodhound-python folder not found. Skipping install."
+    if [ -f requirements.txt ]; then
+        pip3 install -r requirements.txt
+        python3 setup.py install
+    fi
 }
 
 create_symlinks() {
     echo -e "${GREEN}[+] Creating symlinks for tools...${NC}"
-    ln -sf /opt/tools/rustscan /usr/local/bin/rustscan || true
-    ln -sf /opt/tools/sliver-server /usr/local/bin/sliver-server || true
+    [ -f /opt/tools/rustscan ] && ln -sf /opt/tools/rustscan /usr/local/bin/rustscan
+    [ -f /opt/tools/sliver-server ] && ln -sf /opt/tools/sliver-server /usr/local/bin/sliver-server
 }
 
 setup_parrot_prompt() {
     echo -e "${GREEN}[+] Setting up Parrot-style terminal prompt...${NC}"
-    cp ~/.bashrc ~/.bashrc.backup
 
-    cat >> ~/.bashrc << 'EOF'
+    if [ "$EUID" -ne 0 ]; then
+        cp ~/.bashrc ~/.bashrc.backup
+        cat >> ~/.bashrc << 'EOF'
 
 # Parrot OS-style prompt
 PS1="\[\033[0;31m\]┌─\[\033[0;37m\][\[\033[0;32m\]\u\[\033[0;37m\]@\[\033[0;36m\]\h\[\033[0;37m\]]\[\033[0;31m\]─\[\033[0;37m\][\[\033[0;33m\]\w\[\033[0;37m\]]\n\[\033[0;31m\]└──╼ \[\033[0;33m\]\$\[\033[0m\] "
 EOF
-
-    cp ~/.bashrc /root/.bashrc
+        cp ~/.bashrc /root/.bashrc
+    fi
 }
 
 set_kde_wallpaper() {
