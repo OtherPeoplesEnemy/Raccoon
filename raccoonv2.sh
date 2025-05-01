@@ -2,14 +2,16 @@
 
 # Security Raccoon Installer
 # Author: [Your Name]
-# Version: 1.2
-
-set -e
+# Version: 1.3
 
 # --- Colors ---
 GREEN='\033[0;32m'
 RED='\033[0;31m'
 NC='\033[0m'
+
+# --- Logging ---
+LOGFILE="$HOME/security_raccoon_install.log"
+exec > >(tee -a "$LOGFILE") 2>&1
 
 # --- Require root privileges ---
 if [ "$EUID" -ne 0 ]; then 
@@ -20,14 +22,13 @@ fi
 # --- Banner ---
 banner() {
     echo -e "${GREEN}"
-    echo "   _____                         _ _             _____                                  "
-    echo "  / ____|                       (_) |           |  __ \                                 "
-    echo " | (___   ___  ___ _   _ _ __ ___ _| |_ _   _     | |__) |___  ___ ___  _ __ ___  ___     "
-    echo "  \___ \ / _ \/ __| | | | '__/ __| | __| | | |    |  _  // _ \/ __/ _ \| '__/ _ \/ __|    "
-    echo "  ____) |  __/ (__| |_| | | | (__| | |_| |_| |    | | \ \  __/ (_| (_) | | |  __/\__ \    "
-    echo " |_____/ \___|\___|\__,_|_|  \___|_|\__|\__, |    |_|  \_\___|\___\___/|_|  \___||___/    "
-    echo "                                         __/ |                                           "
-    echo "                                        |___/                                            "
+    echo " 
+    echo "   _________                          .__  __           __________ "                                         
+    echo "  /   _____/ ____   ____  __ _________|__|/  |_ ___.__. \______   \_____    ____  ____  ____   ____   ____ "  
+    echo "  \_____  \_/ __ \_/ ___\|  |  \_  __ \  \   __<   |  |  |       _/\__  \ _/ ___\/ ___\/  _ \ /  _ \ /    \ " 
+    echo "  /        \  ___/\  \___|  |  /|  | \/  ||  |  \___  |  |    |   \ / __ \\  \__\  \__(  <_> |  <_> )   |  \ "
+    echo " /_______  /\___  >\___  >____/ |__|  |__||__|  / ____|  |____|_  /(____  /\___  >___  >____/ \____/|___|  / "
+    echo "    \/     \/     \/                       \/              \/      \/     \/    \/                  \/ "
     echo "                       SECURITY RACCOON INSTALLER                                       "
     echo
     echo "       (\\_/)    "
@@ -55,7 +56,7 @@ install_packages() {
     dnf install -y kde-settings
 
     echo -e "${GREEN}[+] Installing hacking-friendly KDE apps...${NC}"
-    dnf install -y yakuake konsole ark plasma-nm krunner
+    dnf install -y yakuake konsole ark plasma-nm
 
     echo -e "${GREEN}[+] Installing core pentest tools...${NC}"
     dnf install -y nmap wireshark aircrack-ng john gobuster nikto ffuf \
@@ -76,8 +77,8 @@ set_kde_default() {
 
 clone_tools() {
     echo -e "${GREEN}[+] Cloning GitHub tools into /opt/tools...${NC}"
-
     cd /opt/tools
+
     git clone https://github.com/Tuhinshubhra/CMSeek.git || echo "CMSeek already exists."
     git clone https://github.com/BishopFox/cloudfox.git || echo "CloudFox already exists."
     git clone https://github.com/aboul3la/Sublist3r.git || echo "Sublist3r already exists."
@@ -143,7 +144,8 @@ summary() {
     echo " Tools: Installed in /opt/tools"
     echo " Burp:  Run manually → sudo bash /opt/tools/burpsuite_community_linux.sh"
     echo " KDE:   Default session set. Reboot to load Plasma."
-    echo " Terminal: Raccoon-themed Parrot-style prompt active!"
+    echo " Terminal: Parrot-style prompt active!"
+    echo " Log file saved to: $LOGFILE"
     echo "=============================================="
     echo -e "${NC}"
 }
